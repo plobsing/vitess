@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"code.google.com/p/go.net/context"
 	"github.com/youtube/vitess/go/vt/callinfo"
-	"github.com/youtube/vitess/go/vt/context"
 	"github.com/youtube/vitess/go/vt/tabletserver/proto"
 )
 
@@ -21,8 +21,8 @@ type QueryDetail struct {
 }
 
 // NewQueryDetail creates a new QueryDetail
-func NewQueryDetail(query *proto.Query, context context.Context, connID int64) *QueryDetail {
-	return &QueryDetail{query: query, context: context, connID: connID, start: time.Now()}
+func NewQueryDetail(ctx context.Context, query *proto.Query, connID int64) *QueryDetail {
+	return &QueryDetail{query: query, context: ctx, connID: connID, start: time.Now()}
 }
 
 // QueryList holds a thread safe list of QueryDetails

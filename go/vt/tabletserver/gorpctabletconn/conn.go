@@ -12,10 +12,10 @@ import (
 	"sync"
 	"time"
 
+	"code.google.com/p/go.net/context"
 	mproto "github.com/youtube/vitess/go/mysql/proto"
 	"github.com/youtube/vitess/go/rpcplus"
 	"github.com/youtube/vitess/go/rpcwrap/bsonrpc"
-	"github.com/youtube/vitess/go/vt/context"
 	"github.com/youtube/vitess/go/vt/rpc"
 	tproto "github.com/youtube/vitess/go/vt/tabletserver/proto"
 	"github.com/youtube/vitess/go/vt/tabletserver/tabletconn"
@@ -41,7 +41,7 @@ type TabletBson struct {
 }
 
 // DialTablet creates and initializes TabletBson.
-func DialTablet(context context.Context, endPoint topo.EndPoint, keyspace, shard string, timeout time.Duration) (tabletconn.TabletConn, error) {
+func DialTablet(ctx context.Context, endPoint topo.EndPoint, keyspace, shard string, timeout time.Duration) (tabletconn.TabletConn, error) {
 	var addr string
 	var config *tls.Config
 	if *tabletBsonEncrypted {
@@ -73,7 +73,7 @@ func DialTablet(context context.Context, endPoint topo.EndPoint, keyspace, shard
 }
 
 // Execute sends the query to VTTablet.
-func (conn *TabletBson) Execute(context context.Context, query string, bindVars map[string]interface{}, transactionID int64) (*mproto.QueryResult, error) {
+func (conn *TabletBson) Execute(ctx context.Context, query string, bindVars map[string]interface{}, transactionID int64) (*mproto.QueryResult, error) {
 	conn.mu.RLock()
 	defer conn.mu.RUnlock()
 	if conn.rpcClient == nil {
@@ -94,7 +94,7 @@ func (conn *TabletBson) Execute(context context.Context, query string, bindVars 
 }
 
 // ExecuteBatch sends a batch query to VTTablet.
-func (conn *TabletBson) ExecuteBatch(context context.Context, queries []tproto.BoundQuery, transactionID int64) (*tproto.QueryResultList, error) {
+func (conn *TabletBson) ExecuteBatch(ctx context.Context, queries []tproto.BoundQuery, transactionID int64) (*tproto.QueryResultList, error) {
 	conn.mu.RLock()
 	defer conn.mu.RUnlock()
 	if conn.rpcClient == nil {
@@ -114,7 +114,7 @@ func (conn *TabletBson) ExecuteBatch(context context.Context, queries []tproto.B
 }
 
 // StreamExecute starts a streaming query to VTTablet.
-func (conn *TabletBson) StreamExecute(context context.Context, query string, bindVars map[string]interface{}, transactionID int64) (<-chan *mproto.QueryResult, tabletconn.ErrFunc) {
+func (conn *TabletBson) StreamExecute(ctx context.Context, query string, bindVars map[string]interface{}, transactionID int64) (<-chan *mproto.QueryResult, tabletconn.ErrFunc) {
 	conn.mu.RLock()
 	defer conn.mu.RUnlock()
 	if conn.rpcClient == nil {
@@ -135,7 +135,7 @@ func (conn *TabletBson) StreamExecute(context context.Context, query string, bin
 }
 
 // Begin starts a transaction.
-func (conn *TabletBson) Begin(context context.Context) (transactionID int64, err error) {
+func (conn *TabletBson) Begin(ctx context.Context) (transactionID int64, err error) {
 	conn.mu.RLock()
 	defer conn.mu.RUnlock()
 	if conn.rpcClient == nil {
@@ -151,7 +151,7 @@ func (conn *TabletBson) Begin(context context.Context) (transactionID int64, err
 }
 
 // Commit commits the ongoing transaction.
-func (conn *TabletBson) Commit(context context.Context, transactionID int64) error {
+func (conn *TabletBson) Commit(ctx context.Context, transactionID int64) error {
 	conn.mu.RLock()
 	defer conn.mu.RUnlock()
 	if conn.rpcClient == nil {
@@ -167,7 +167,7 @@ func (conn *TabletBson) Commit(context context.Context, transactionID int64) err
 }
 
 // Rollback rolls back the ongoing transaction.
-func (conn *TabletBson) Rollback(context context.Context, transactionID int64) error {
+func (conn *TabletBson) Rollback(ctx context.Context, transactionID int64) error {
 	conn.mu.RLock()
 	defer conn.mu.RUnlock()
 	if conn.rpcClient == nil {

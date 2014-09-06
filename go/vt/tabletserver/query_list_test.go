@@ -10,7 +10,7 @@ import (
 func TestQueryList(t *testing.T) {
 	ql := NewQueryList(nil)
 	connID := int64(1)
-	qd := NewQueryDetail(&proto.Query{}, &context.DummyContext{}, connID)
+	qd := NewQueryDetail(&context.DummyContext{}, &proto.Query{}, connID)
 	ql.Add(qd)
 
 	if qd1, ok := ql.queryDetails[connID]; !ok || qd1.connID != connID {
@@ -18,7 +18,7 @@ func TestQueryList(t *testing.T) {
 	}
 
 	conn2ID := int64(2)
-	qd2 := NewQueryDetail(&proto.Query{}, &context.DummyContext{}, conn2ID)
+	qd2 := NewQueryDetail(&context.DummyContext{}, &proto.Query{}, conn2ID)
 	ql.Add(qd2)
 
 	rows := ql.GetQueryzRows()

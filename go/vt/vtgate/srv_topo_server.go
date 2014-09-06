@@ -13,10 +13,10 @@ import (
 	"sync"
 	"time"
 
+	"code.google.com/p/go.net/context"
 	log "github.com/golang/glog"
 
 	"github.com/youtube/vitess/go/stats"
-	"github.com/youtube/vitess/go/vt/context"
 	"github.com/youtube/vitess/go/vt/health"
 	"github.com/youtube/vitess/go/vt/topo"
 )
@@ -37,11 +37,11 @@ const (
 // SrvTopoServer is a subset of topo.Server that only contains the serving
 // graph read-only calls used by clients to resolve serving addresses.
 type SrvTopoServer interface {
-	GetSrvKeyspaceNames(context context.Context, cell string) ([]string, error)
+	GetSrvKeyspaceNames(ctx context.Context, cell string) ([]string, error)
 
-	GetSrvKeyspace(context context.Context, cell, keyspace string) (*topo.SrvKeyspace, error)
+	GetSrvKeyspace(ctx context.Context, cell, keyspace string) (*topo.SrvKeyspace, error)
 
-	GetEndPoints(context context.Context, cell, keyspace, shard string, tabletType topo.TabletType) (*topo.EndPoints, error)
+	GetEndPoints(ctx context.Context, cell, keyspace, shard string, tabletType topo.TabletType) (*topo.EndPoints, error)
 }
 
 // ResilientSrvTopoServer is an implementation of SrvTopoServer based
@@ -196,7 +196,7 @@ func NewResilientSrvTopoServer(base topo.Server, counterPrefix string) *Resilien
 }
 
 // GetSrvKeyspaceNames returns all keyspace names for the given cell.
-func (server *ResilientSrvTopoServer) GetSrvKeyspaceNames(context context.Context, cell string) ([]string, error) {
+func (server *ResilientSrvTopoServer) GetSrvKeyspaceNames(ctx context.Context, cell string) ([]string, error) {
 	server.counts.Add(queryCategory, 1)
 
 	// find the entry in the cache, add it if not there
@@ -227,10 +227,10 @@ func (server *ResilientSrvTopoServer) GetSrvKeyspaceNames(context context.Contex
 	if err != nil {
 		if entry.insertionTime.IsZero() {
 			server.counts.Add(errorCategory, 1)
-			log.Errorf("GetSrvKeyspaceNames(%v, %v) failed: %v (no cached value, caching and returning error)", context, cell, err)
+			log.Errorf("GetSrvKeyspaceNames(%v, %v) failed: %v (no cached value, caching and returning error)", ctx, cell, err)
 		} else {
 			server.counts.Add(cachedCategory, 1)
-			log.Warningf("GetSrvKeyspaceNames(%v, %v) failed: %v (returning cached value: %v %v)", context, cell, err, entry.value, entry.lastError)
+			log.Warningf("GetSrvKeyspaceNames(%v, %v) failed: %v (returning cached value: %v %v)", ctx, cell, err, entry.value, entry.lastError)
 			return entry.value, entry.lastError
 		}
 	}
@@ -239,12 +239,12 @@ func (server *ResilientSrvTopoServer) GetSrvKeyspaceNames(context context.Contex
 	entry.insertionTime = time.Now()
 	entry.value = result
 	entry.lastError = err
-	entry.lastErrorContext = context
+	entry.lastErrorContext = ctx
 	return result, err
 }
 
 // GetSrvKeyspace returns SrvKeyspace object for the given cell and keyspace.
-func (server *ResilientSrvTopoServer) GetSrvKeyspace(context context.Context, cell, keyspace string) (*topo.SrvKeyspace, error) {
+func (server *ResilientSrvTopoServer) GetSrvKeyspace(ctx context.Context, cell, keyspace string) (*topo.SrvKeyspace, error) {
 	server.counts.Add(queryCategory, 1)
 
 	// find the entry in the cache, add it if not there
@@ -276,10 +276,10 @@ func (server *ResilientSrvTopoServer) GetSrvKeyspace(context context.Context, ce
 	if err != nil {
 		if entry.insertionTime.IsZero() {
 			server.counts.Add(errorCategory, 1)
-			log.Errorf("GetSrvKeyspace(%v, %v, %v) failed: %v (no cached value, caching and returning error)", context, cell, keyspace, err)
+			log.Errorf("GetSrvKeyspace(%v, %v, %v) failed: %v (no cached value, caching and returning error)", ctx, cell, keyspace, err)
 		} else {
 			server.counts.Add(cachedCategory, 1)
-			log.Warningf("GetSrvKeyspace(%v, %v, %v) failed: %v (returning cached value: %v %v)", context, cell, keyspace, err, entry.value, entry.lastError)
+			log.Warningf("GetSrvKeyspace(%v, %v, %v) failed: %v (returning cached value: %v %v)", ctx, cell, keyspace, err, entry.value, entry.lastError)
 			return entry.value, entry.lastError
 		}
 	}
@@ -288,12 +288,12 @@ func (server *ResilientSrvTopoServer) GetSrvKeyspace(context context.Context, ce
 	entry.insertionTime = time.Now()
 	entry.value = result
 	entry.lastError = err
-	entry.lastErrorContext = context
+	entry.lastErrorContext = ctx
 	return result, err
 }
 
 // GetEndPoints return all endpoints for the given cell, keyspace, shard, and tablet type.
-func (server *ResilientSrvTopoServer) GetEndPoints(context context.Context, cell, keyspace, shard string, tabletType topo.TabletType) (result *topo.EndPoints, err error) {
+func (server *ResilientSrvTopoServer) GetEndPoints(ctx context.Context, cell, keyspace, shard string, tabletType topo.TabletType) (result *topo.EndPoints, err error) {
 	key := []string{cell, keyspace, shard, string(tabletType)}
 
 	server.counts.Add(queryCategory, 1)
@@ -364,7 +364,7 @@ func (server *ResilientSrvTopoServer) GetEndPoints(context context.Context, cell
 			server.counts.Add(remoteErrorCategory, 1)
 			server.endPointCounters.remoteLookupErrors.Add(key, 1)
 			log.Errorf("GetEndPoints(%v, %v, %v, %v, %v) failed to get SrvShard for remote master: %v",
-				context, cell, keyspace, shard, tabletType, err)
+				ctx, cell, keyspace, shard, tabletType, err)
 		} else {
 			if ss.MasterCell != "" && ss.MasterCell != cell {
 				result, err = server.topoServer.GetEndPoints(ss.MasterCell, keyspace, shard, tabletType)
@@ -375,11 +375,11 @@ func (server *ResilientSrvTopoServer) GetEndPoints(context context.Context, cell
 		server.endPointCounters.lookupErrors.Add(key, 1)
 		if entry.insertionTime.IsZero() {
 			server.counts.Add(errorCategory, 1)
-			log.Errorf("GetEndPoints(%v, %v, %v, %v, %v) failed: %v (no cached value, caching and returning error)", context, cell, keyspace, shard, tabletType, err)
+			log.Errorf("GetEndPoints(%v, %v, %v, %v, %v) failed: %v (no cached value, caching and returning error)", ctx, cell, keyspace, shard, tabletType, err)
 		} else {
 			server.counts.Add(cachedCategory, 1)
 			server.endPointCounters.staleCacheFallbacks.Add(key, 1)
-			log.Warningf("GetEndPoints(%v, %v, %v, %v, %v) failed: %v (returning cached value: %v %v)", context, cell, keyspace, shard, tabletType, err, entry.value, entry.lastError)
+			log.Warningf("GetEndPoints(%v, %v, %v, %v, %v) failed: %v (returning cached value: %v %v)", ctx, cell, keyspace, shard, tabletType, err, entry.value, entry.lastError)
 			return entry.value, entry.lastError
 		}
 	}
@@ -389,7 +389,7 @@ func (server *ResilientSrvTopoServer) GetEndPoints(context context.Context, cell
 	entry.originalValue = result
 	entry.value = filterUnhealthyServers(result)
 	entry.lastError = err
-	entry.lastErrorContext = context
+	entry.lastErrorContext = ctx
 	entry.remote = remote
 	return entry.value, err
 }

@@ -394,7 +394,7 @@ func (qe *QueryEngine) StreamExecute(logStats *SQLQueryStats, query *proto.Query
 	logStats.WaitingForConnection += time.Now().Sub(waitingForConnectionStart)
 	defer conn.Recycle()
 
-	qd := NewQueryDetail(query, logStats.context, conn.Id())
+	qd := NewQueryDetail(logStats.context, query, conn.Id())
 	qe.streamQList.Add(qd)
 	defer qe.streamQList.Remove(qd)
 
