@@ -14,6 +14,7 @@ import (
 	"github.com/youtube/vitess/go/sqltypes"
 	"github.com/youtube/vitess/go/stats"
 	"github.com/youtube/vitess/go/sync2"
+	"github.com/youtube/vitess/go/vt/callinfo"
 	"github.com/youtube/vitess/go/vt/dbconfigs"
 	"github.com/youtube/vitess/go/vt/dbconnpool"
 	"github.com/youtube/vitess/go/vt/logutil"
@@ -298,7 +299,7 @@ func (qe *QueryEngine) Execute(logStats *SQLQueryStats, query *proto.Query) (rep
 		panic(NewTabletError(RETRY, "Query disallowed due to rule: %s", desc))
 	}
 
-	qe.checkTableAcl(basePlan.TableName, basePlan.PlanId, basePlan.Authorized, logStats.context.GetUsername())
+	qe.checkTableAcl(basePlan.TableName, basePlan.PlanId, basePlan.Authorized, callinfo.FromContext(logStats.context).Username())
 
 	if basePlan.PlanId == planbuilder.PLAN_DDL {
 		return qe.execDDL(logStats, query.Sql)
@@ -385,7 +386,7 @@ func (qe *QueryEngine) StreamExecute(logStats *SQLQueryStats, query *proto.Query
 	defer queryStats.Record(plan.PlanId.String(), time.Now())
 
 	authorized := tableacl.Authorized(plan.TableName, plan.PlanId.MinRole())
-	qe.checkTableAcl(plan.TableName, plan.PlanId, authorized, logStats.context.GetUsername())
+	qe.checkTableAcl(plan.TableName, plan.PlanId, authorized, callinfo.FromContext(logStats.context).Username())
 
 	// does the real work: first get a connection
 	waitingForConnectionStart := time.Now()
