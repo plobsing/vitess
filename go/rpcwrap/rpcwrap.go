@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"time"
 
+	"code.google.com/p/go.net/context"
 	log "github.com/golang/glog"
 	rpc "github.com/youtube/vitess/go/rpcplus"
 	"github.com/youtube/vitess/go/rpcwrap/auth"
@@ -152,11 +153,11 @@ type rpcHandler struct {
 
 // ServeCodec calls ServeCodec for the appropriate server
 // (authenticated or default).
-func (h *rpcHandler) ServeCodecWithContext(c rpc.ServerCodec, context *proto.Context) {
+func (h *rpcHandler) ServeCodecWithContext(ctx context.Context, c rpc.ServerCodec) {
 	if h.useAuth {
-		AuthenticatedServer.ServeCodecWithContext(c, context)
+		AuthenticatedServer.ServeCodecWithContext(ctx, c)
 	} else {
-		rpc.ServeCodecWithContext(c, context)
+		rpc.ServeCodecWithContext(ctx, c)
 	}
 }
 
@@ -174,9 +175,9 @@ func (h *rpcHandler) ServeHTTP(c http.ResponseWriter, req *http.Request) {
 	}
 	io.WriteString(conn, "HTTP/1.0 "+connected+"\n\n")
 	codec := h.cFactory(NewBufferedConnection(conn))
-	context := proto.NewContext(req.RemoteAddr)
+	ctx := proto.NewContext(req.RemoteAddr)
 	if h.useAuth {
-		if authenticated, err := auth.Authenticate(codec, context); !authenticated {
+		if authenticated, err := auth.Authenticate(ctx, codec); !authenticated {
 			if err != nil {
 				log.Errorf("authentication erred at %s: %v", req.RemoteAddr, err)
 			}
@@ -184,7 +185,7 @@ func (h *rpcHandler) ServeHTTP(c http.ResponseWriter, req *http.Request) {
 			return
 		}
 	}
-	h.ServeCodecWithContext(codec, context)
+	h.ServeCodecWithContext(ctx, codec)
 }
 
 func GetRpcPath(codecName string, auth bool) string {
